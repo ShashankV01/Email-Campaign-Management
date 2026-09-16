@@ -2,6 +2,7 @@ package com.example.campaign.repository;
 
 import com.example.campaign.entity.Campaign;
 import com.example.campaign.entity.CampaignStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
