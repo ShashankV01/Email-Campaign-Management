@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "Email Campaign Management API",
+    "_postman_id": "email-campaign-api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "campaignId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Campaign",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"September Newsletter\",\n  \"subject\": \"September Updates\",\n  \"senderEmail\": \"marketing@example.com\",\n  \"content\": \"Welcome!\",\n  \"scheduledAt\": \"2026-12-20T10:00:00\"\n}"
+        },
+        "url": {"raw": "{{baseUrl}}/api/campaigns"}
+      }
+    },
+    {
+      "name": "Add Recipients",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"recipients\": [\n    {\"name\": \"Rahul\", \"email\": \"rahul@example.com\"},\n    {\"name\": \"Priya\", \"email\": \"priya@example.com\"}\n  ]\n}"
+        },
+        "url": {"raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/recipients"}
+      }
+    },
+    {
+      "name": "Schedule Campaign",
+      "request": {
+        "method": "POST",
+        "url": {"raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/schedule"}
+      }
+    },
+    {
+      "name": "Process Due Campaigns",
+      "request": {
+        "method": "POST",
+        "url": {"raw": "{{baseUrl}}/api/campaigns/process"}
+      }
+    },
+    {
+      "name": "List Campaigns",
+      "request": {
+        "method": "GET",
+        "url": {"raw": "{{baseUrl}}/api/campaigns?page=0&size=10&sort=desc"}
+      }
+    },
+    {
+      "name": "Campaign Details",
+      "request": {
+        "method": "GET",
+        "url": {"raw": "{{baseUrl}}/api/campaigns/{{campaignId}}"}
+      }
+    },
+    {
+      "name": "Statistics",
+      "request": {
+        "method": "GET",
+        "url": {"raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/statistics"}
+      }
+    }
+  ]
+}

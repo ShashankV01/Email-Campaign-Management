@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: email-campaign-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: email_campaign_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  app:
+    build: .
+    container_name: email-campaign-api
+    depends_on:
+      - mysql
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/email_campaign_db?serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:
