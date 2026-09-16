@@ -1,216 +1,510 @@
-# Email Campaign Management API
+# Email Campaign Management API(Backend only)
 
-Java 17 + Spring Boot + MySQL REST API for the Email Campaign Developer Assignment.
+A backend REST API for managing email campaigns, recipients, scheduling, and simulated email delivery.
+
+The application is built using Java and Spring Boot with MySQL as the database.
+
+---
+
+## Tech Stack
+
+* Java 17
+* Spring Boot
+* Spring Web
+* MySQL 8
+* Maven
+* Docker & Docker Compose
+* JUnit
+
+---
+
+<img width="2873" height="1688" alt="Screenshot 2026-09-16 205339" src="https://github.com/user-attachments/assets/b8add61c-a8e8-4160-bbb0-f8e4d33e3c50" />
+
 
 ## Features
 
-- Create campaigns
-- Add multiple recipients
-- Validate emails
-- Prevent duplicate recipients per campaign
-- Schedule campaigns
-- Simulate delivered/failed email outcomes
-- Automatic background processing of due campaigns
-- Campaign pagination
-- Status filtering
-- Campaign-name search
-- Created-date sorting
-- Campaign statistics
-- Consistent JSON responses
-- Global exception handling
-- MySQL database persistence
-- Pessimistic locking to prevent double processing
-- Optimistic version field for consistency
-- Docker Compose support
+* Create email campaigns
+* Add multiple recipients to a campaign
+* Prevent duplicate recipients within the same campaign
+* Schedule campaigns
+* Simulate email delivery with delivered/failed statuses
+* Campaign status management
+* View campaign details
+* Dockerized application and MySQL database
 
-## Requirements
+---
 
-- Java 17+
-- Maven 3.9+
-- MySQL 8+
+## Running the Application with Docker
 
-## Configuration
+### Prerequisites
 
-Create environment variables:
+* Docker Desktop
+* Git
+
+### Clone the repository
 
 ```bash
-DB_URL=jdbc:mysql://localhost:3306/email_campaign_db?createDatabaseIfNotExist=true&serverTimezone=UTC
+git clone <your-github-repository-url>
+cd email-campaign-api
+```
+
+### Environment Configuration
+
+Create a local `.env` file based on `.env.example`.
+
+Example:
+
+```env
 DB_USERNAME=root
-DB_PASSWORD=your_password
+DB_PASSWORD=your_database_password
 SERVER_PORT=8080
 ```
 
-## Run locally
+The `.env` file should not be committed to the repository.
 
-Create the database:
-
-```sql
-CREATE DATABASE email_campaign_db;
-```
-
-Then:
+### Start the application
 
 ```bash
-mvn clean test
-mvn spring-boot:run
+docker compose up --build
 ```
 
-API base URL:
+Docker Compose starts:
+
+* MySQL database
+* Spring Boot application
+
+The API will be available at:
 
 ```text
-http://localhost:8080/api/campaigns
+http://localhost:8080
 ```
 
-## API examples
+### Stop the application
 
-### 1. Create campaign
+```bash
+docker compose down
+```
+
+---
+
+## Project Structure
+
+```text
+src/
+├── main/
+│   ├── java/com/example/campaign/
+│   │   ├── controller/
+│   │   ├── dto/
+│   │   ├── entity/
+│   │   ├── exception/
+│   │   ├── repository/
+│   │   └── service/
+│   │
+│   └── resources/
+│       └── application.yml
+│
+└── test/
+    └── java/com/example/campaign/
+
+Dockerfile
+docker-compose.yml
+schema.sql
+.env.example
+pom.xml
+```
+
+---
+
+## Database Design
+
+The application uses two main tables: Campaign & Recipient
+
+### Campaign
+
+Stores the main information about an email campaign.
+
+Important fields include:
+
+* `id`
+* `name`
+* `subject`
+* `sender_email`
+* `content`
+* `scheduled_at`
+* `status`
+* `created_at`
+* `updated_at`
+
+Campaign statuses:
+
+```text
+DRAFT
+SCHEDULED
+PROCESSING
+COMPLETED
+```
+
+### Recipient
+
+Stores recipients associated with a campaign.
+
+Important fields include:
+
+* `id`
+* `campaign_id`
+* `name`
+* `email`
+* `status`
+* `created_at`
+
+Recipient statuses:
+
+```text
+PENDING
+DELIVERED
+FAILED
+```
+
+A foreign key connects each recipient to its campaign.
+
+A unique constraint on:
+
+```text
+(campaign_id, email)
+```
+
+prevents the same email address from being added more than once to the same campaign.
+
+Indexes are used on commonly queried fields to improve database access.
+
+The database schema is provided in `schema.sql`.
+
+---
+
+## Campaign Workflow
+
+A campaign follows this basic lifecycle:
+
+```text
+DRAFT
+  |
+  | Add recipients
+  |
+  v
+DRAFT
+  |
+  | Schedule
+  |
+  v
+SCHEDULED
+  |
+  | Processing
+  |
+  v
+PROCESSING
+  |
+  | All recipients processed
+  |
+  v
+COMPLETED
+```
+
+A campaign must contain at least one recipient before it can be scheduled.
+
+Only campaigns in `DRAFT` status can be scheduled.
+
+The scheduled time must be in the future.
+
+---
+
+## API Endpoints
+
+### Create Campaign
 
 ```http
 POST /api/campaigns
-Content-Type: application/json
 ```
+
+Example request:
 
 ```json
 {
-  "name": "September Newsletter",
-  "subject": "September Updates",
-  "senderEmail": "marketing@example.com",
-  "content": "Welcome to our September newsletter!",
-  "scheduledAt": "2026-12-20T10:00:00"
+  "name": "Kasplo Product Update",
+  "subject": "Introducing Our Latest Product Updates",
+  "senderEmail": "sender@example.com",
+  "content": "Hello, here are our latest product updates.",
+  "scheduledAt": "2026-12-15T10:00:00"
 }
 ```
 
-### 2. Add recipients
+A newly created campaign has the status:
+
+```text
+DRAFT
+```
+
+---
+
+### Add Recipients
 
 ```http
-POST /api/campaigns/1/recipients
-Content-Type: application/json
+POST /api/campaigns/{campaignId}/recipients
 ```
+
+Example request:
 
 ```json
 {
   "recipients": [
     {
-      "name": "Rahul",
-      "email": "rahul@example.com"
+      "name": "Shashank",
+      "email": "shash@example.com"
     },
     {
-      "name": "Priya",
-      "email": "priya@example.com"
+      "name": "Akki",
+      "email": "akki@example.com"
     }
   ]
 }
 ```
 
-### 3. Schedule
+The API validates email addresses and prevents duplicate emails within the same campaign.
+
+---
+
+### Schedule Campaign
 
 ```http
-POST /api/campaigns/1/schedule
+POST /api/campaigns/{campaignId}/schedule
 ```
 
-### 4. Process due campaigns manually
+A campaign can only be scheduled when:
+
+* The campaign exists
+* The campaign is in `DRAFT` status
+* At least one recipient has been added
+* The scheduled time is in the future
+
+After successful scheduling, the campaign status becomes:
+
+```text
+SCHEDULED
+```
+
+---
+
+### Process Campaigns
 
 ```http
 POST /api/campaigns/process
 ```
 
-### 5. Process one campaign manually
+This endpoint triggers campaign processing.
 
-```http
-POST /api/campaigns/1/process
+Each pending recipient is randomly assigned one of the following outcomes:
+
+```text
+DELIVERED
+FAILED
 ```
 
-### 6. List campaigns
+No actual email is sent.
 
-```http
-GET /api/campaigns?page=0&size=10&sort=desc
+After all recipients are processed, the campaign status becomes:
+
+```text
+COMPLETED
 ```
 
-Filter by status:
+The application also includes a background scheduler that checks for campaigns that are ready for processing.
+
+---
+
+### List Campaigns
 
 ```http
-GET /api/campaigns?status=SCHEDULED
+GET /api/campaigns
 ```
 
-Search by name:
+Supports:
+
+* Pagination
+* Status filtering
+* Campaign name search
+* Sorting by creation date
+
+Example:
 
 ```http
-GET /api/campaigns?name=September
+GET /api/campaigns?page=0&size=10&status=DRAFT&search=Kasplo&sortBy=createdAt&sortDirection=desc
 ```
 
-### 7. Campaign details
+---
+
+### Get Campaign Details
 
 ```http
-GET /api/campaigns/1
+GET /api/campaigns/{campaignId}
 ```
 
-### 8. Statistics
+Returns campaign information along with its recipients.
+
+---
+
+### Get Campaign Statistics
 
 ```http
-GET /api/campaigns/1/statistics
+GET /api/campaigns/{campaignId}/statistics
 ```
+
+Returns:
+
+* Total recipients
+* Delivered count
+* Failed count
+* Pending count
+
+Example response:
+
+```json
+{
+  "total": 10,
+  "delivered": 7,
+  "failed": 2,
+  "pending": 1
+}
+```
+
+---
+
+## API Testing
+
+A Postman collection is included in the repository:
+
+```text
+postman/Email-Campaign-API.postman_collection.json
+```
+
+The collection contains requests for the main campaign operations.
+
+The API can also be tested using tools such as `curl`.
+
+---
+
+## Validation and Error Handling
+
+The API validates incoming requests using Spring Boot Bean Validation.
+
+Examples of validation include:
+
+* Required campaign fields
+* Valid sender email
+* Valid recipient email
+* Duplicate recipient prevention
+* Campaign existence
+* Campaign status validation
+* At least one recipient before scheduling
+* Future scheduled time
+
+A global exception handler provides consistent JSON error responses.
 
 Example:
 
 ```json
 {
-  "success": true,
-  "message": "Campaign statistics retrieved successfully",
-  "data": {
-    "campaignId": 1,
-    "totalRecipients": 100,
-    "delivered": 80,
-    "failed": 15,
-    "pending": 5
-  }
+  "success": false,
+  "message": "Campaign not found"
 }
 ```
 
-## Processing design
+---
 
-The scheduler checks for due SCHEDULED campaigns every 30 seconds.
+## Concurrency Handling
 
-Each campaign is locked using a JPA pessimistic write lock before processing. Therefore concurrent requests cannot process the same campaign simultaneously.
+Campaign processing is protected against concurrent processing using a database pessimistic lock.
 
-Each PENDING recipient is randomly marked DELIVERED or FAILED. Once all recipients have been handled, the campaign becomes COMPLETED.
+When a campaign is being processed, the campaign record is locked before checking and updating its status.
 
-## Database design
+This helps prevent multiple requests or scheduler executions from processing the same campaign simultaneously.
 
-### campaigns
+Campaign status checks also prevent an already completed campaign from being processed again.
 
-- id
-- name
-- subject
-- sender_email
-- content
-- scheduled_at
-- status
-- created_at
-- updated_at
-- version
+---
 
-### recipients
+## Testing
 
-- id
-- campaign_id
-- name
-- email
-- status
-- created_at
+The project includes unit tests covering important business rules, including:
 
-A unique constraint on `(campaign_id, email)` prevents duplicate addresses within the same campaign.
+* Valid campaign creation
+* Duplicate recipient validation
+* Scheduling without recipients
+* Preventing processing of completed campaigns
+* Campaign statistics
 
-## Production improvements
+Tests can be executed as part of the Maven build.
 
-For production, this could be improved with:
+---
 
-- Flyway/Liquibase migrations
-- Authentication/authorization
-- Queue such as Kafka/RabbitMQ
-- Retry and dead-letter handling
-- Idempotency keys
-- Distributed locking
-- Metrics/monitoring
-- Structured logging
-- Rate limiting
-- Integration tests using Testcontainers
+## Technical Decisions
+
+### Spring Boot
+
+Spring Boot was selected to provide a structured approach for developing REST APIs with dependency injection, validation, exception handling, and database integration.
+
+### Spring Data JPA
+
+Spring Data JPA is used to simplify database operations and map Java entities to MySQL tables.
+
+### MySQL
+
+MySQL provides persistent relational storage for campaigns and recipients and allows database-level constraints to enforce data integrity.
+
+### DTOs
+
+DTOs are used to separate API request/response models from database entities.
+
+### Service Layer
+
+Business rules are implemented in the service layer instead of placing business logic directly inside controllers.
+
+### Global Exception Handling
+
+A centralized exception handler provides consistent API error responses.
+
+### Background Processing
+
+A scheduled background process checks for campaigns that are ready to be processed.
+
+### Pessimistic Locking
+
+Database-level locking is used to reduce the possibility of the same campaign being processed concurrently.
+
+### Docker
+
+Docker Compose provides a reproducible environment containing both the application and MySQL database.
+
+---
+
+## Production Improvements
+
+For a production-ready implementation, the following improvements could be considered:
+
+* Integrate with a real email delivery provider.
+* Introduce a message queue such as Kafka or RabbitMQ.
+* Implement retry mechanisms for failed deliveries.
+
+---
+
+## Security
+
+Sensitive configuration should be provided through environment variables.
+
+The repository contains `.env.example` with placeholder values only.
+
+Actual `.env` files, passwords, API keys, and other credentials should not be committed to GitHub.
+
+---
+
+## License
+
+This project was developed as part of a backend development assignment.
